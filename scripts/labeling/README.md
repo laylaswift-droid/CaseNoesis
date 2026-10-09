@@ -30,7 +30,9 @@ How labels are found, in order:
 2. **The PDF's file name**, e.g. a RECAP name like `gov.uscourts.<court>.<case>.<doc>.<att>.pdf`, which also gives the storage URL.
 3. **`--peek` (optional)**: keyword match on the first page's text, only for PDFs with no type from steps 1–2. Runs locally; the text is never printed or saved.
 
-A manifest description that only mentions a document type ("Motion to Dismiss Indictment") is labeled `other`, not `indictment`.
+A manifest description that only mentions a document type ("Motion to Dismiss Indictment") is labeled `other`, not `indictment`. The filing's own name at the start of a description wins over words later in it (attachment lists, hearing notes).
+
+Files that are not real PDFs (empty files, saved error pages) are flagged `not_a_pdf` and are never treated as duplicates of each other. Local disk paths in a manifest are never used as URLs.
 
 **Duplicates:** identical files (same `sha256`) keep one row each, but all except one are marked `duplicate_of`. Labels are pooled across copies. When copies disagree, a specific label wins over a generic one (`forced_labor` over `trafficking`, `superseding_indictment` over `indictment`); any other disagreement is flagged in `needs_review`.
 
@@ -50,5 +52,15 @@ Also writes into `--out`:
 - `release_manifest.csv`: new name → labels, URL, original path, sha256
 - `unlabeled.csv`: PDFs still needing review, with reasons
 - `duplicates.csv`: exact copies that were skipped
+
+## 3. Check against the collector: `check_against_collector.py`
+
+```
+python check_against_collector.py --root <same recap folder> --labels court_pdf_labels.csv
+```
+
+Prints counts only. Compares the labels with what the collector recorded: PDFs per folder vs the frozen snapshot in `data/collected/README.md` (820 PDFs), how many records in each manifest were matched, document type vs the collector's `document_kind` tags in `data/collected/public/fraud_court_lookup.jsonl` (pass `--fraud-lookup` if it isn't found next to `--root`), how duplicates spread across folders and cases, and whether every URL is a CourtListener link.
+
+On the 264 public fraud filings, the labels agree with the collector's tags on 259 of 263 joined filings. The 4 differences are tags in the lookup that don't match the description (two plea agreements and two affidavits tagged as indictments).
 
 Requires Python 3; `--peek` also needs `pip install pypdf`.

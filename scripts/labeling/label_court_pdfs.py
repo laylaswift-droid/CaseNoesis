@@ -82,9 +82,17 @@ def norm_doc_type(text, strict_prefix=True):
         return t.strip().replace(" ", "_")
     if strict_prefix and NOT_THE_FILING.search(t):
         return "other"
-    for label, pat in PATTERNS:
-        if re.search(pat, t):
-            return label
+    texts = [t]
+    if strict_prefix:
+        # The filing's own name comes first ("PLEA AGREEMENT re: count One of
+        # the Indictment"); attachment lists and hearing notes come later.
+        head = re.split(r"\(|\battachments?\b|\bas to\b|\bre:|\bre\b|\bby\b|"
+                        r"\bfiled\b|,|;", t, maxsplit=1)[0]
+        texts = [head, t]
+    for text in texts:
+        for label, pat in PATTERNS:
+            if re.search(pat, text):
+                return label
     return "other"
 
 
@@ -135,9 +143,9 @@ def pick_url(rec):
         u = url_from_recap_name(basename_of(c))
         if u:
             return u
-    for c in cands:
-        if c.startswith("/") or c.startswith("recap/"):
-            return to_courtlistener_url(c)
+    for c in cands:  # CourtListener-relative paths only, never local disk paths
+        if re.match(r"^/?(recap|docket|opinion|api)/", c):
+            return to_courtlistener_url(c if c.startswith(("/", "recap/")) else "/" + c)
     return ""
 
 
@@ -268,6 +276,14 @@ def peek_first_page(pdf):
     return norm_doc_type(txt, strict_prefix=False)
 
 
+def is_real_pdf(path):
+    try:
+        with open(path, "rb") as f:
+            return f.read(1024).lstrip().startswith(b"%PDF")
+    except OSError:
+        return False
+
+
 def file_hash(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -283,7 +299,8 @@ def merge_duplicates(rows):
     """Keep one row per identical file; pool labels across its copies."""
     groups = {}
     for r in rows:
-        groups.setdefault(r["sha256"], []).append(r)
+        if r.get("real_pdf", True):  # identical junk files are not the same document
+            groups.setdefault(r["sha256"], []).append(r)
     n_groups = n_dups = 0
     for g in groups.values():
         if len(g) < 2:
@@ -420,6 +437,8 @@ def main():
                 crime = sub[0] if len(sub) > 1 else ""
             crime = str(crime).strip().lower().replace(" ", "_")
 
+            real_pdf = is_real_pdf(pdf)
+            if not real_pdf: reasons.append("not_a_pdf")
             if not doc_type: reasons.append("no_doc_type")
             elif doc_type == "other": reasons.append("not_one_of_8_types")
             if not crime: reasons.append("no_crime")
@@ -428,6 +447,7 @@ def main():
                          "doc_type": doc_type or "", "source": "recap",
                          "url": url, "label_origin": origin,
                          "reasons": reasons, "sha256": file_hash(pdf),
+                         "real_pdf": real_pdf,
                          "duplicate_of": "", "hit": bool(hit)})
 
     dup_groups, dup_files = merge_duplicates(rows)
@@ -449,6 +469,8 @@ def main():
             stats[f"type:{r['doc_type'] or 'blank'}"] += 1
             if r["reasons"]:
                 stats["needs_review (unique)"] += 1
+            if not r.get("real_pdf", True):
+                stats["not_a_pdf"] += 1
     stats["duplicate_copies"] = dup_files
     stats["duplicate_groups"] = dup_groups
 
