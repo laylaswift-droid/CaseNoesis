@@ -19,10 +19,11 @@ Usage:
   python rename_court_pdfs.py --root <recap folder> --labels court_pdf_labels.csv --out <new folder>
   add --dry-run to see the counts without copying anything
 """
-import argparse, csv, shutil, sys
+import argparse, csv, os, re, shutil, sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+SAFE_LABEL = re.compile(r"^[a-zA-Z0-9_]+$") #letters, digits and _only
 DOC_TYPES = {"indictment", "superseding_indictment", "plea",
              "sentencing_memorandum", "complaint", "judgment",
              "transcript", "docket"}
@@ -65,6 +66,9 @@ def main():
         elif r["doc_type"] not in DOC_TYPES:
             r["needs_review"] = "not_one_of_8_types"
             unlabeled.append(r)
+        elif not (SAFE_LABEL.match(r["crime_type"]) and SAFE_LABEL.match(r["source"])):
+            r["needs_review"] = "unsafe_label"
+            unlabeled.append(r)
         else:
             ready.append(r)
     ready.sort(key=lambda r: r["path"])
@@ -72,7 +76,13 @@ def main():
     counters = defaultdict(int)
     plan, missing = [], []
     for r in ready:
-        src = root / Path(r["path"])
+        rel = os.path.normpath(r["path"])  # checks the path as written; links are allowed
+        if (os.path.isabs(rel) or Path(rel).drive or rel == os.pardir
+                or rel.startswith(os.pardir + os.sep)):
+            r["needs_review"] = "path_outside_root"
+            unlabeled.append(r)
+            continue
+        src = root / rel
         if not src.is_file():
             missing.append(r["path"])
             continue
