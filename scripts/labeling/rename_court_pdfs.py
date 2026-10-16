@@ -23,7 +23,7 @@ import argparse, csv, os, re, shutil, sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-SAFE_LABEL = re.compile(r"^[a-zA-Z0-9_]+$") #letters, digits and _only
+SAFE_LABEL = re.compile(r"^[a-z0-9_]+$") #letters, digits and _only
 DOC_TYPES = {"indictment", "superseding_indictment", "plea",
              "sentencing_memorandum", "complaint", "judgment",
              "transcript", "docket"}
