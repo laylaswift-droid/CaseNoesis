@@ -69,7 +69,8 @@ PATTERNS = [
 # Filings that merely *mention* another doc type ("Motion to dismiss indictment")
 NOT_THE_FILING = re.compile(
     r"^\s*(motion|order|notice|response|reply|letter|memorandum (in|of law)|"
-    r"objection|stipulation|consent|exhibit|affidavit|declaration)\b", re.I)
+    r"objection|stipulation|consent|exhibit|affidavit|declaration|"
+    r"minute|waiver|arraignment|docket annotation)\b", re.I)
 
 RECAP_NAME = re.compile(r"^(gov\.uscourts\.[a-z0-9]+\.\d+)\.(\d+)\.(\d+)\.pdf$", re.I)
 
