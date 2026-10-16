@@ -59,7 +59,7 @@ Also writes into `--out`:
 python check_against_collector.py --root <same recap folder> --labels court_pdf_labels.csv
 ```
 
-Prints counts only. Compares the labels with what the collector recorded: PDFs per folder vs the frozen snapshot in `data/collected/README.md` (820 PDFs), how many records in each manifest were matched, document type vs the collector's `document_kind` tags in `data/collected/public/fraud_court_lookup.jsonl` (pass `--fraud-lookup` if it isn't found next to `--root`), how duplicates spread across folders and cases, and whether every URL is a CourtListener link.
+Prints counts only. Compares the labels with what the collector recorded: PDFs per folder vs the frozen snapshot in `data/collected/README.md` (820 PDFs), how many records in each manifest were matched, document type vs the collector's `document_kind` tags in `fraud_court_lookup.jsonl` (this file was removed from `main` on 7 Oct 2026; keep a local copy and pass `--fraud-lookup <path>`, otherwise this step is skipped), how duplicates spread across folders and cases, and whether every URL is a CourtListener link.
 
 On the 264 public fraud filings, the labels agree with the collector's tags on 259 of 263 joined filings. The 4 differences are tags in the lookup that don't match the description (two plea agreements and two affidavits tagged as indictments).
 
